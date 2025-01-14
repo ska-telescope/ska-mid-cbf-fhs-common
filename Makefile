@@ -12,6 +12,7 @@ PROJECT = ska-mid-cbf-fhs-common
 CI_REGISTRY ?= gitlab.com/ska-telescope/ska-mid-cbf-fhs-common
 
 CI_PROJECT_DIR ?= .
+CI_POETRY_VERSION = 2.0.1
 
 # W503: "Line break before binary operator." Disabled to work around a bug in flake8 where currently both "before" and "after" are disallowed.
 PYTHON_SWITCHES_FOR_FLAKE8 = --ignore=DAR201,W503,E731
