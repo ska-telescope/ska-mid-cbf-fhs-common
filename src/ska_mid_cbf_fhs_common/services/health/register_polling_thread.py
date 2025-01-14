@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 import logging
 import threading
-from __future__ import annotations
 import time
 from typing import Callable
 
 from ska_control_model import HealthState
 
 from ska_mid_cbf_fhs_common.base_classes.api.fhs_base_api_interface import FhsBaseApiInterface
+
 
 class RegisterPollingThread(threading.Thread):
     def __init__(

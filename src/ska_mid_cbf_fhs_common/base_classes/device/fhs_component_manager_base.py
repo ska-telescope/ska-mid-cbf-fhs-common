@@ -98,6 +98,12 @@ class FhsComponentManagerBase(TaskExecutorComponentManager):
 
         return result
 
+    def is_go_to_idle_allowed(self: FhsComponentManagerBase) -> bool:
+        self.logger.debug("Checking if gotoidle is allowed...")
+        errorMsg = f"go_to_idle not allowed in ObsState {self.obs_state}; " "must be in ObsState.READY"
+
+        return self.is_allowed(errorMsg, [ObsState.READY, ObsState.ABORTED, ObsState.FAULT])
+
     ########
     # Commands
     ########

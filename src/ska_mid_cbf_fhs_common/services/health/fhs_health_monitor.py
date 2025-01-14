@@ -103,4 +103,3 @@ class FhsHealthMonitor:
             add_health_state=self.add_health_state,
             merge_health_states=self.merge_health_states,
         )
-

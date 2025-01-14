@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from ska_mid_cbf_fhs_common.base_classes.device.low_level.fhs_low_level_device_base import FhsLowLevelDeviceBase
-from ska_mid_cbf_fhs_common.devices.ip_block.wideband_power_meter.wideband_power_meter_component_manager import WidebandPowerMeterComponentManager
+from ska_mid_cbf_fhs_common.devices.ip_block.wideband_power_meter.wideband_power_meter_component_manager import (
+    WidebandPowerMeterComponentManager,
+)
 
 
 class WidebandPowerMeter(FhsLowLevelDeviceBase):
