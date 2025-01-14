@@ -40,17 +40,17 @@ include:
   - project: 'ska-telescope/templates-repository'
     file: 'gitlab-ci/includes/finaliser.gitlab-ci.yml'
 
-# python-lint:
-#   before_script:
-#     - apt-get update && apt-get install -y graphviz graphviz-dev
-#     - poetry config virtualenvs.in-project true
-#     - echo "python-build Setting.. poetry config virtualenvs.create $POETRY_CONFIG_VIRTUALENVS_CREATE"
-#     - poetry config virtualenvs.create $POETRY_CONFIG_VIRTUALENVS_CREATE
-#     - |
-#       if [[ -n $CI_POETRY_VERSION ]] && [[ $(poetry --version) != *$CI_POETRY_VERSION* ]]; then
-#         echo "python-lint: Updating poetry to $CI_POETRY_VERSION";
-#         time poetry self update $CI_POETRY_VERSION;
-#       fi;
+python-lint:
+  before_script:
+    - apt-get update && apt-get install -y graphviz graphviz-dev
+    - poetry config virtualenvs.in-project true
+    - echo "python-build Setting.. poetry config virtualenvs.create $POETRY_CONFIG_VIRTUALENVS_CREATE"
+    - poetry config virtualenvs.create $POETRY_CONFIG_VIRTUALENVS_CREATE
+    - |
+      if [[ -n $CI_POETRY_VERSION ]] && [[ $(poetry --version) != *$CI_POETRY_VERSION* ]]; then
+        echo "python-lint: Updating poetry to $CI_POETRY_VERSION";
+        time poetry self update $CI_POETRY_VERSION;
+      fi;
 
-#       echo "python-lint: Installing with poetry";
-#       time poetry install --all-extras;
+      echo "python-lint: Installing with poetry";
+      time poetry install --all-extras;
