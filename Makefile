@@ -27,7 +27,7 @@ POETRY_PYTHON_RUNNER = poetry run python3 -m
 PYTHON_LINT_TARGET = ./src/
 PYTHON_VARS_AFTER_PYTEST = --forked
 
-PYTHON_TEST_FILE = ./tests/unit/
+PYTHON_TEST_FILE = ./tests/
 
 #
 # include makefile to pick up the standard Make targets, e.g., 'make build'
