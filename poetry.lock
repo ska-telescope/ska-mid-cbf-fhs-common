@@ -1930,26 +1930,26 @@ reference = "PyPI-public"
 
 [[package]]
 name = "requests"
-version = "2.28.0"
+version = "2.32.3"
 description = "Python HTTP for Humans."
 optional = false
-python-versions = ">=3.7, <4"
+python-versions = ">=3.8"
 groups = ["main", "docs"]
 markers = "python_version == \"3.10\" or python_version >= \"3.12\" or python_version == \"3.11\""
 files = [
-    {file = "requests-2.28.0-py3-none-any.whl", hash = "sha256:bc7861137fbce630f17b03d3ad02ad0bf978c844f3536d0edda6499dafce2b6f"},
-    {file = "requests-2.28.0.tar.gz", hash = "sha256:d568723a7ebd25875d8d1eaf5dfa068cd2fc8194b2e483d7b1f7c81918dbec6b"},
+    {file = "requests-2.32.3-py3-none-any.whl", hash = "sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6"},
+    {file = "requests-2.32.3.tar.gz", hash = "sha256:55365417734eb18255590a9ff9eb97e9e1da868d4ccd6402399eaf68af20a760"},
 ]
 
 [package.dependencies]
 certifi = ">=2017.4.17"
-charset-normalizer = ">=2.0.0,<2.1.0"
+charset-normalizer = ">=2,<4"
 idna = ">=2.5,<4"
-urllib3 = ">=1.21.1,<1.27"
+urllib3 = ">=1.21.1,<3"
 
 [package.extras]
 socks = ["PySocks (>=1.5.6,!=1.5.7)"]
-use-chardet-on-py3 = ["chardet (>=3.0.2,<5)"]
+use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [package.source]
 type = "legacy"
@@ -2152,15 +2152,15 @@ reference = "PyPI-public"
 
 [[package]]
 name = "ska-control-model"
-version = "1.0.0"
+version = "1.1.0"
 description = "The SKA control model"
 optional = false
 python-versions = ">=3.10,<4.0"
 groups = ["main"]
 markers = "python_version == \"3.10\" or python_version >= \"3.12\" or python_version == \"3.11\""
 files = [
-    {file = "ska_control_model-1.0.0-py3-none-any.whl", hash = "sha256:b5573317eb1b18308634d6d88c187310877222bef397a025ad47d01ff2f57d7f"},
-    {file = "ska_control_model-1.0.0.tar.gz", hash = "sha256:8434af88da664d5a74ed4f93e96f498bfa9a70325d1caa39dad5578d9f53c4cf"},
+    {file = "ska_control_model-1.1.0-py3-none-any.whl", hash = "sha256:3a07e21125a83ae5c75dbf78bc74ff92eb99a86a019ceadbbca46c9af81df028"},
+    {file = "ska_control_model-1.1.0.tar.gz", hash = "sha256:67eed018bc84acaf5b9a4a06908e154cf6e34e1283e29941b696b058b5e14308"},
 ]
 
 [package.dependencies]
@@ -2822,4 +2822,4 @@ reference = "PyPI-public"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "5d59ac9663f738f98a8539b2c291a380c242a15ad204cd6d8dad78bf1185e44b"
+content-hash = "c4eb6ec1638d0f62527e5a92cf65560b80c55030b08ecd013e5e7096bbe4c083"
