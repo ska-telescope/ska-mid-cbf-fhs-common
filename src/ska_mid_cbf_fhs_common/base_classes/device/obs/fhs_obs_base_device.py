@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from logging import Logger
-
 from ska_control_model import ObsState
+from ska_tango_base import SKAObsDevice
+from tango import DevVarLongStringArray  # Import the correct type
+from tango.server import command  # Ensure command and DebugIt are imported
+
 from ska_mid_cbf_fhs_common.base_classes.device.fhs_base_device import FhsBaseDevice
 from ska_mid_cbf_fhs_common.state_model.fhs_obs_state import FhsObsStateMachine, FhsObsStateModel
-from ska_tango_base import SKAObsDevice
-from tango.server import command, DebugIt  # Ensure command and DebugIt are imported
-from tango import DevVarLongStringArray  # Import the correct type
+
 
 class FhsObsBaseDevice(SKAObsDevice, FhsBaseDevice):
-
     def init_device(self: FhsBaseDevice) -> None:
         super().init_device()
         self._update_obs_state(obs_state=ObsState.IDLE)
@@ -19,12 +18,11 @@ class FhsObsBaseDevice(SKAObsDevice, FhsBaseDevice):
     # Commands
     ##############
     @command(dtype_out="DevVarLongStringArray")
-    @DebugIt()
     def GoToIdle(self: FhsBaseDevice) -> DevVarLongStringArray:
         command_handler = self.get_command_object(command_name="GoToIdle")
         result_code_message, command_id = command_handler()
         return [[result_code_message], [command_id]]
-    
+
     ###############
     # Functions
     ###############

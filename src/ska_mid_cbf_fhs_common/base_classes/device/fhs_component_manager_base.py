@@ -15,8 +15,6 @@ from ska_control_model import CommunicationStatus, HealthState, PowerState, Resu
 from ska_tango_base.base.base_component_manager import BaseComponentManager
 from ska_tango_base.executor.executor_component_manager import TaskExecutorComponentManager
 
-from ska_mid_cbf_fhs_common.state_model.fhs_obs_state import FhsObsStateMachine, ObsState
-
 
 class FhsComponentManagerBase(TaskExecutorComponentManager):
     @property
@@ -40,8 +38,6 @@ class FhsComponentManagerBase(TaskExecutorComponentManager):
         logger: logging.Logger,
         **kwargs: Any,
     ) -> None:
-        self.obs_state = ObsState.IDLE
-
         self._attr_change_callback = attr_change_callback
         self._attr_archive_callback = attr_archive_callback
         self._device_health_state_callback = health_state_callback
@@ -57,50 +53,6 @@ class FhsComponentManagerBase(TaskExecutorComponentManager):
             logger=logger,
             **kwargs,
         )
-
-    ####
-    # Allowance Functions
-    ####
-
-    def is_recover_allowed(self: FhsLowLevelComponentManagerBase) -> bool:
-        self.logger.debug("Checking if Recover is allowed...")
-        errorMsg = f"Device {self._device_id}  recover not allowed in ObsState {self.obs_state}; \
-            must be in ObsState.IDLE or READY or ABORTED or RESETTING"
-        return self.is_allowed(errorMsg, [ObsState.IDLE, ObsState.FAULT, ObsState.READY, ObsState.ABORTED])
-
-    def is_configure_allowed(self: FhsLowLevelComponentManagerBase) -> bool:
-        self.logger.debug("Checking if Configure is allowed...")
-        errorMsg = f"Device {self._device_id} Configure not allowed in ObsState {self.obs_state}; \
-            must be in ObsState.IDLE or READY"
-
-        return self.is_allowed(errorMsg, [ObsState.IDLE, ObsState.READY])
-
-    def is_start_allowed(self: FhsLowLevelComponentManagerBase) -> bool:
-        self.logger.debug("Checking if Start is allowed...")
-        errorMsg = f"Device {self._device_id} Start not allowed in ObsState {self.obs_state}; \
-            must be in ObsState.IDLE or READY"
-
-        return self.is_allowed(errorMsg, [ObsState.IDLE, ObsState.READY])
-
-    def is_stop_allowed(self: FhsLowLevelComponentManagerBase) -> bool:
-        self.logger.debug("Checking if Stop is allowed...")
-        errorMsg = f"Device {self._device_id} stop not allowed in ObsState {self.obs_state}; \
-            must be in ObsState.IDLE, READY or ABORTED"
-
-        return self.is_allowed(errorMsg, [ObsState.IDLE, ObsState.READY, ObsState.SCANNING, ObsState.ABORTED, ObsState.FAULT])
-
-    def is_deconfigure_allowed(self: FhsLowLevelComponentManagerBase) -> bool:
-        self.logger.debug("Checking if Stop is allowed...")
-        errorMsg = f"Device {self._device_id} deconfigure not allowed in ObsState {self.obs_state}; \
-            must be in ObsState.READY"
-
-        return self.is_allowed(errorMsg, [ObsState.IDLE, ObsState.READY, ObsState.ABORTED, ObsState.FAULT])
-
-    def is_go_to_idle_allowed(self: FhsComponentManagerBase) -> bool:
-        self.logger.debug("Checking if gotoidle is allowed...")
-        errorMsg = f"go_to_idle not allowed in ObsState {self.obs_state}; " "must be in ObsState.READY"
-
-        return self.is_allowed(errorMsg, [ObsState.READY, ObsState.ABORTED, ObsState.FAULT])
 
     def get_device_health_state(self: FhsComponentManagerBase):
         return self._health_state
@@ -133,37 +85,6 @@ class FhsComponentManagerBase(TaskExecutorComponentManager):
             health_state=HealthState.DEGRADED
         )  # TODO Determine if the health state here needs to be degraded or not
 
-    def is_allowed(self: FhsComponentManagerBase, error_msg: str, obsStates: list[ObsState]) -> bool:
-        result = True
-
-        if self.obs_state not in obsStates:
-            self.logger.warning(error_msg)
-            result = False
-
-        return result
-
-    def is_go_to_idle_allowed(self: FhsComponentManagerBase) -> bool:
-        self.logger.debug("Checking if gotoidle is allowed...")
-        errorMsg = f"go_to_idle not allowed in ObsState {self.obs_state}; " "must be in ObsState.READY"
-
-        return self.is_allowed(errorMsg, [ObsState.READY, ObsState.ABORTED, ObsState.FAULT])
-
-    ########
-    # Commands
-    ########
-    def go_to_idle(self: FhsComponentManagerBase) -> tuple[ResultCode, str]:
-        self.logger.debug(f"Component state: {self._component_state}")
-
-        msg = "GoToIdle called sucessfully"
-
-        if self.obs_state != ObsState.IDLE:
-            if self.is_go_to_idle_allowed():
-                self._obs_state_action_callback(FhsObsStateMachine.GO_TO_IDLE)
-        else:
-            msg = "Already in the IDLE State"
-
-        return ResultCode.OK, msg
-
     ########
     # Private Commands
     ########
@@ -177,27 +98,9 @@ class FhsComponentManagerBase(TaskExecutorComponentManager):
         self._component_state_callback(power=PowerState.UNKNOWN)
         self._update_communication_state(communication_state=CommunicationStatus.DISABLED)
 
-    ###
-    # Utility functions
-    ###
-
-    def _obs_command_with_callback(
-        self: FhsComponentManagerBase,
-        *args,
-        command_thread: Callable[[Any], None],
-        hook: str,
-        **kwargs,
-    ):
-        """
-        Wrap command thread with ObsStateModel-driving callbacks.
-
-        :param command_thread: actual command thread to be executed
-        :param hook: hook for state machine action
-        """
-        self._obs_command_running_callback(hook=hook, running=True)
-        command_thread(*args, **kwargs)
-        self._obs_command_running_callback(hook=hook, running=False)
-
+    ######
+    # Utility Functions
+    ######
     def _set_task_callback_aborted(self: FhsComponentManagerBase, task_callback: Callable, message: str) -> None:
         self._set_task_callback(task_callback, TaskStatus.ABORTED, ResultCode.ABORTED, message)
 

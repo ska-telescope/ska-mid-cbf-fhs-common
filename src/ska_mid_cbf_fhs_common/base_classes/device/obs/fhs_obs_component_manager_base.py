@@ -1,11 +1,8 @@
 from __future__ import annotations  # allow forward references in type hints
 
-import functools
-import os
-from threading import Event
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
-from ska_control_model import ObsState, ResultCode, TaskStatus
+from ska_control_model import ObsState, ResultCode
 
 from ska_mid_cbf_fhs_common.base_classes.device.fhs_component_manager_base import FhsComponentManagerBase
 from ska_mid_cbf_fhs_common.state_model.fhs_obs_state import FhsObsStateMachine
@@ -17,6 +14,7 @@ class FhsObsComponentManagerBase(FhsComponentManagerBase):
         *args: Any,
         **kwargs: Any,
     ) -> None:
+        self.obs_state = ObsState.IDLE
         super().__init__(
             *args,
             **kwargs,
@@ -66,175 +64,48 @@ class FhsObsComponentManagerBase(FhsComponentManagerBase):
 
         return self.is_allowed(errorMsg, [ObsState.READY, ObsState.ABORTED, ObsState.FAULT])
 
-    #####
-    # Command Functions
-    #####
+    def is_allowed(self: FhsComponentManagerBase, error_msg: str, obsStates: list[ObsState]) -> bool:
+        result = True
 
-    def test_cmd(self: FhsObsComponentManagerBase, task_callback: Optional[Callable] = None) -> tuple[TaskStatus, str]:
-        return [TaskStatus.COMPLETED, "Test Complete"]
+        if self.obs_state not in obsStates:
+            self.logger.warning(error_msg)
+            result = False
 
-    def recover(self: FhsObsComponentManagerBase) -> tuple[ResultCode, str]:
-        try:
-            if self.is_recover_allowed():
-                self._obs_state_action_callback(FhsObsStateMachine.RECOVER_INVOKED)
-                self._api.recover()
-                self._obs_state_action_callback(FhsObsStateMachine.RECOVER_COMPLETED)
-                return ResultCode.OK, "Recover command completed OK"
-            else:
-                return (
-                    ResultCode.REJECTED,
-                    f"Recover command is not allowed in obs state {self.obs_state}",
-                )
-        except Exception as ex:
-            return ResultCode.FAILED, f"Recover command failed. ex={ex!r}"
+        return result
 
-    def configure(self: FhsObsComponentManagerBase, argin: dict) -> tuple[ResultCode, str]:
-        self.logger.debug(f"Component state: {self.component_state}")
-        if self.is_configure_allowed():
-            self._obs_command_running_callback(hook="configure", running=True)
-            result = self._configure(argin)
-            self._obs_command_running_callback(hook="configure", running=False)
-            return result
+    ########
+    # Commands
+    ########
+    def go_to_idle(self: FhsComponentManagerBase) -> tuple[ResultCode, str]:
+        self.logger.debug(f"Component state: {self._component_state}")
+
+        msg = "GoToIdle called sucessfully"
+
+        if self.obs_state != ObsState.IDLE:
+            if self.is_go_to_idle_allowed():
+                self._obs_state_action_callback(FhsObsStateMachine.GO_TO_IDLE)
         else:
-            return (
-                ResultCode.REJECTED,
-                f"Configure not allowed in component state {self.component_state}",
-            )
+            msg = "Already in the IDLE State"
 
-    def deconfigure(self: FhsObsComponentManagerBase, argin: dict = None) -> tuple[ResultCode, str]:
-        self.logger.debug(f"Component state: {self.component_state}")
-        if self.is_deconfigure_allowed():
-            self._obs_command_running_callback(hook="deconfigure", running=True)
-            result = self._configure(argin, True)
-            self._obs_command_running_callback(hook="deconfigure", running=False)
-            return result
-        else:
-            return (
-                ResultCode.REJECTED,
-                f"Deconfigure not allowed in component state {self.component_state}",
-            )
+        return ResultCode.OK, msg
 
-    def start(self: FhsObsComponentManagerBase, task_callback: Optional[Callable] = None) -> tuple[TaskStatus, str]:
-        self.logger.debug(f"Component state: {self.communication_state}")
-        return self.submit_task(
-            func=functools.partial(
-                self._obs_command_with_callback,
-                hook="start",
-                command_thread=self._start,
-            ),
-            is_cmd_allowed=self.is_start_allowed,
-            task_callback=task_callback,
-        )
+    ###
+    # Utility functions
+    ###
 
-    def stop(
-        self: FhsObsComponentManagerBase,
-        task_callback: Optional[Callable] = tuple[TaskStatus, str],
-    ) -> tuple[TaskStatus, str]:
-        self.logger.debug(f"Component state: {self.communication_state}")
-        return self.submit_task(
-            func=functools.partial(
-                self._obs_command_with_callback,
-                hook="stop",
-                command_thread=self._stop,
-            ),
-            is_cmd_allowed=self.is_stop_allowed,
-            task_callback=task_callback,
-        )
+    def _obs_command_with_callback(
+        self: FhsComponentManagerBase,
+        *args,
+        command_thread: Callable[[Any], None],
+        hook: str,
+        **kwargs,
+    ):
+        """
+        Wrap command thread with ObsStateModel-driving callbacks.
 
-    def status(
-        self: FhsObsComponentManagerBase,
-        clear: bool = False,
-    ) -> tuple[ResultCode, dict]:
-        try:
-            return self._api.status(clear)
-        except Exception as ex:
-            return ResultCode.FAILED, f"Status command FAILED. ex={ex!r}"
-
-    # ------------------------
-    #  Private Fast Commands
-    # ------------------------
-
-    def _configure(
-        self: FhsObsComponentManagerBase,
-        argin: dict = None,
-        deconfigure: bool = False,
-    ) -> tuple[ResultCode, str]:
-        try:
-            mode = "Configure" if not deconfigure else "Deconfigure"
-            self.logger.info(f"Running {mode} command")
-
-            if not deconfigure:
-                if argin is not None:
-                    return self._api.configure(argin)
-                else:
-                    return ResultCode.REJECTED, f"No Configuration given for {self._device_id}"
-            else:
-                return self._api.deconfigure(argin)
-
-        except Exception as ex:
-            return ResultCode.FAILED, f"{mode} command FAILED. ex={ex!r}"
-
-    # -------------------------
-    # Private LRC
-    # -------------------------
-    def _testCmd(self: FhsObsComponentManagerBase, task_callback: Optional[Callable] = None) -> None:
-        # Assume configure fails at the start
-        resultCode = ResultCode.FAILED
-        taskStatus = TaskStatus.FAILED
-
-        try:
-            resultCode = (ResultCode.OK, f"Configure {self._device_id} completed OK")
-            taskStatus = TaskStatus.COMPLETED
-        except Exception as ex:
-            resultCode = (ResultCode.FAILED, f"Unable to recover mac: {str(ex)}")
-            self.set_fault_and_failed()
-
-        task_callback(
-            result=resultCode,
-            status=taskStatus,
-        )
-
-    def _start(
-        self: FhsObsComponentManagerBase,
-        task_callback: Callable,
-        task_abort_event: Event,
-    ) -> None:
-        try:
-            task_callback(status=TaskStatus.IN_PROGRESS)
-
-            if not task_abort_event.isSet():
-                # TODO Add polling
-                result = self._api.start()
-
-                if result[0] is ResultCode.OK:
-                    self._set_task_callback_ok_completed(task_callback, result[1])
-                else:
-                    self._set_task_callback_failed(task_callback, result[1])
-            else:
-                self._set_task_callback_aborted(task_callback, "Start command was ABORTED")
-
-        except Exception as ex:
-            self._set_task_callback_failed(task_callback, f"Start command FAILED. ex={ex!r}")
-            self.set_fault_and_failed()
-
-    def _stop(
-        self: FhsObsComponentManagerBase,
-        task_callback: Optional[Callable] = None,
-        task_abort_event: Optional[Event] = None,
-    ) -> None:
-        try:
-            task_callback(status=TaskStatus.IN_PROGRESS)
-
-            if not task_abort_event.is_set():
-                # TODO add polling
-                result = self._api.stop()
-                if result[0] is ResultCode.OK:
-                    self._set_task_callback_ok_completed(task_callback, result[1])
-                else:
-                    self._set_task_callback_failed(task_callback, result[1])
-            else:
-                self._set_task_callback_aborted(task_callback, "Stop command was ABORTED")
-
-        except Exception as ex:
-            self._set_task_callback_failed(task_callback, f"Stop command FAILED. ex={ex!r}")
-            self.set_fault_and_failed()
+        :param command_thread: actual command thread to be executed
+        :param hook: hook for state machine action
+        """
+        self._obs_command_running_callback(hook=hook, running=True)
+        command_thread(*args, **kwargs)
+        self._obs_command_running_callback(hook=hook, running=False)

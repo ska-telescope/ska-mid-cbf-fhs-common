@@ -1,18 +1,16 @@
 from __future__ import annotations  # allow forward references in type hints
 
-import functools
 import os
 from threading import Event
 from typing import Any, Callable, Optional
 
-from ska_control_model import ObsState, ResultCode, SimulationMode, TaskStatus
+from ska_control_model import ResultCode, SimulationMode, TaskStatus
 
 from ska_mid_cbf_fhs_common.base_classes.api.fhs_base_api_interface import FhsBaseApiInterface
 from ska_mid_cbf_fhs_common.base_classes.device.fhs_component_manager_base import FhsComponentManagerBase
 from ska_mid_cbf_fhs_common.base_classes.device.low_level.fhs_low_level_device_base import FhsLowLevelDeviceBase
 from ska_mid_cbf_fhs_common.services.api.emulator_api import EmulatorApi
 from ska_mid_cbf_fhs_common.services.api.firmware_api import FirmwareApi
-from ska_mid_cbf_fhs_common.state_model.fhs_obs_state import FhsObsStateMachine
 
 
 class FhsLowLevelComponentManagerBase(FhsComponentManagerBase):
@@ -72,7 +70,6 @@ class FhsLowLevelComponentManagerBase(FhsComponentManagerBase):
             return self._configure(argin, True)
         except Exception as ex:
             return ResultCode.FAILED, f"Deconfigure command failed. ex={ex!r}"
-
 
     def start(self: FhsLowLevelComponentManagerBase, task_callback: Optional[Callable] = None) -> tuple[TaskStatus, str]:
         self.logger.debug(f"Component state: {self.communication_state}")

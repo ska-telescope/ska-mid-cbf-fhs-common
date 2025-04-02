@@ -3,9 +3,8 @@ from __future__ import annotations
 from logging import Logger
 from typing import TypeVar, cast
 
-from ska_tango_base import SKABaseDevice
-import tango
 from ska_control_model import CommunicationStatus, HealthState, ResultCode
+from ska_tango_base import SKABaseDevice
 from ska_tango_base.base.base_device import DevVarLongStringArrayType
 from ska_tango_base.commands import ArgumentValidator, FastCommand, SubmittedSlowCommand, _BaseCommand
 from tango import DebugIt, DevState
@@ -54,8 +53,6 @@ class FhsBaseDevice(SKABaseDevice):
     def communicationState(self: FhsBaseDevice) -> CommunicationStatus:
         return self.component_manager.communication_state
 
-
-
     ###############
     # Functions
     ###############
@@ -85,7 +82,6 @@ class FhsBaseDevice(SKABaseDevice):
                     logger=self.logger,
                 ),
             )
-
 
     def _communication_state_changed(self: FhsBaseDevice, communication_state: CommunicationStatus) -> None:
         super()._communication_state_changed(communication_state=communication_state)
