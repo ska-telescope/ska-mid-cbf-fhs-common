@@ -3,16 +3,15 @@ from __future__ import annotations
 from logging import Logger
 from typing import TypeVar, cast
 
+from ska_tango_base import SKABaseDevice
 import tango
-from ska_control_model import CommunicationStatus, HealthState, ObsState, ResultCode
+from ska_control_model import CommunicationStatus, HealthState, ResultCode
 from ska_tango_base.base.base_device import DevVarLongStringArrayType
 from ska_tango_base.commands import ArgumentValidator, FastCommand, SubmittedSlowCommand, _BaseCommand
-from ska_tango_base.obs.obs_device import SKAObsDevice
 from tango import DebugIt, DevState
 from tango.server import attribute, command, device_property
 
 from ska_mid_cbf_fhs_common.base_classes.device.fhs_component_manager_base import FhsComponentManagerBase
-from ska_mid_cbf_fhs_common.state_model.fhs_obs_state import FhsObsStateMachine, FhsObsStateModel
 
 __all__ = ["FhsBaseDevice", "FhsFastCommand", "main"]
 
@@ -38,7 +37,7 @@ class FhsFastCommand(FastCommand):
 # FhsBaseDevice class
 #
 # -----------------------------------------------------
-class FhsBaseDevice(SKAObsDevice):
+class FhsBaseDevice(SKABaseDevice):
     # -----------------
     # Device Properties
     # -----------------
@@ -55,32 +54,11 @@ class FhsBaseDevice(SKAObsDevice):
     def communicationState(self: FhsBaseDevice) -> CommunicationStatus:
         return self.component_manager.communication_state
 
-    ##############
-    # Commands
-    ##############
-    @command(
-        dtype_out="DevVarLongStringArray",
-    )
-    @tango.DebugIt()
-    def GoToIdle(self: FhsBaseDevice) -> DevVarLongStringArrayType:
-        command_handler = self.get_command_object(command_name="GoToIdle")
-        result_code_message, command_id = command_handler()
-        return [[result_code_message], [command_id]]
+
 
     ###############
     # Functions
     ###############
-    def _init_state_model(self: FhsBaseDevice) -> None:
-        """Set up the state model for the device."""
-        super()._init_state_model()
-
-        # supplying the reduced observing state machine defined above
-        self.obs_state_model = FhsObsStateModel(
-            logger=self.logger,
-            callback=self._update_obs_state,
-            state_machine_factory=FhsObsStateMachine,
-        )
-
     def init_command_objects(self: FhsBaseDevice, commandsAndMethods: list[tuple] | None = None) -> None:
         """Set up the command objects."""
         super().init_command_objects()
@@ -108,44 +86,6 @@ class FhsBaseDevice(SKAObsDevice):
                 ),
             )
 
-    def reset_obs_state(self: FhsBaseDevice):
-        if self._obs_state in [ObsState.FAULT, ObsState.ABORTED]:
-            self.obs_state_model.perform_action(FhsObsStateMachine.GO_TO_IDLE)
-
-    def _obs_command_running(self: FhsBaseDevice, hook: str, running: bool) -> None:
-        """
-        Callback provided to component manager to drive the obs state model into
-        transitioning states during the relevant command's submitted thread.
-
-        :param hook: the observing command-specific hook
-        :param running: True when thread begins, False when thread completes
-        """
-        action = "invoked" if running else "completed"
-        self.logger.info(f"Changing ObsState from running command, calling: {hook}_{action} ")
-        self.obs_state_model.perform_action(f"{hook}_{action}")
-
-    def _obs_state_action(self: FhsBaseDevice, action: str) -> None:
-        self.obs_state_model.perform_action(action)
-
-    def _update_obs_state(self: FhsBaseDevice, obs_state: ObsState) -> None:
-        """
-        Perform Tango operations in response to a change in obsState within the state machine.
-
-        This helper method is passed to the observation state model as a
-        callback, so that the model can trigger actions in the Tango
-        device.
-
-        Overridden here to supply new ObsState value to component manager property
-
-        :param obs_state: the new obs_state value
-        """
-        self.logger.debug(f"ObsState updating to {ObsState(obs_state).name}")
-
-        super()._update_obs_state(obs_state=obs_state)
-
-        # set the obstate in the component_manager
-        if hasattr(self, "component_manager"):
-            self.component_manager.obs_state = obs_state
 
     def _communication_state_changed(self: FhsBaseDevice, communication_state: CommunicationStatus) -> None:
         super()._communication_state_changed(communication_state=communication_state)
@@ -157,7 +97,6 @@ class FhsBaseDevice(SKAObsDevice):
         self.set_status("ON")
         self.set_change_event("communicationState", True)
         self._update_health_state(HealthState.OK)
-        self._update_obs_state(obs_state=ObsState.IDLE)
 
     def get_dev_state(self: FhsBaseDevice) -> DevState:
         return self.dev_state()

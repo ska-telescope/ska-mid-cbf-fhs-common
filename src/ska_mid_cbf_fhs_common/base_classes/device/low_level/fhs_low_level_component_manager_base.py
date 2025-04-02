@@ -48,50 +48,6 @@ class FhsLowLevelComponentManagerBase(FhsComponentManagerBase):
         else:
             self._api = FirmwareApi(bitstream_path, device.firmware_ip_block_id, self.logger)
 
-    ####
-    # Allowance Functions
-    ####
-
-    def is_recover_allowed(self: FhsLowLevelComponentManagerBase) -> bool:
-        self.logger.debug("Checking if Recover is allowed...")
-        errorMsg = f"Device {self._device_id}  recover not allowed in ObsState {self.obs_state}; \
-            must be in ObsState.IDLE or READY or ABORTED or RESETTING"
-        return self.is_allowed(errorMsg, [ObsState.IDLE, ObsState.FAULT, ObsState.READY, ObsState.ABORTED])
-
-    def is_configure_allowed(self: FhsLowLevelComponentManagerBase) -> bool:
-        self.logger.debug("Checking if Configure is allowed...")
-        errorMsg = f"Device {self._device_id} Configure not allowed in ObsState {self.obs_state}; \
-            must be in ObsState.IDLE or READY"
-
-        return self.is_allowed(errorMsg, [ObsState.IDLE, ObsState.READY])
-
-    def is_start_allowed(self: FhsLowLevelComponentManagerBase) -> bool:
-        self.logger.debug("Checking if Start is allowed...")
-        errorMsg = f"Device {self._device_id} Start not allowed in ObsState {self.obs_state}; \
-            must be in ObsState.IDLE or READY"
-
-        return self.is_allowed(errorMsg, [ObsState.IDLE, ObsState.READY])
-
-    def is_stop_allowed(self: FhsLowLevelComponentManagerBase) -> bool:
-        self.logger.debug("Checking if Stop is allowed...")
-        errorMsg = f"Device {self._device_id} stop not allowed in ObsState {self.obs_state}; \
-            must be in ObsState.IDLE, READY or ABORTED"
-
-        return self.is_allowed(errorMsg, [ObsState.IDLE, ObsState.READY, ObsState.SCANNING, ObsState.ABORTED, ObsState.FAULT])
-
-    def is_deconfigure_allowed(self: FhsLowLevelComponentManagerBase) -> bool:
-        self.logger.debug("Checking if Stop is allowed...")
-        errorMsg = f"Device {self._device_id} deconfigure not allowed in ObsState {self.obs_state}; \
-            must be in ObsState.READY"
-
-        return self.is_allowed(errorMsg, [ObsState.IDLE, ObsState.READY, ObsState.ABORTED, ObsState.FAULT])
-
-    def is_go_to_idle_allowed(self: FhsComponentManagerBase) -> bool:
-        self.logger.debug("Checking if gotoidle is allowed...")
-        errorMsg = f"go_to_idle not allowed in ObsState {self.obs_state}; " "must be in ObsState.READY"
-
-        return self.is_allowed(errorMsg, [ObsState.READY, ObsState.ABORTED, ObsState.FAULT])
-
     #####
     # Command Functions
     #####
@@ -101,54 +57,27 @@ class FhsLowLevelComponentManagerBase(FhsComponentManagerBase):
 
     def recover(self: FhsLowLevelComponentManagerBase) -> tuple[ResultCode, str]:
         try:
-            if self.is_recover_allowed():
-                self._obs_state_action_callback(FhsObsStateMachine.RECOVER_INVOKED)
-                self._api.recover()
-                self._obs_state_action_callback(FhsObsStateMachine.RECOVER_COMPLETED)
-                return ResultCode.OK, "Recover command completed OK"
-            else:
-                return (
-                    ResultCode.REJECTED,
-                    f"Recover command is not allowed in obs state {self.obs_state}",
-                )
+            return self._api.recover()
         except Exception as ex:
             return ResultCode.FAILED, f"Recover command failed. ex={ex!r}"
 
     def configure(self: FhsLowLevelComponentManagerBase, argin: dict) -> tuple[ResultCode, str]:
-        self.logger.debug(f"Component state: {self.component_state}")
-        if self.is_configure_allowed():
-            self._obs_command_running_callback(hook="configure", running=True)
-            result = self._configure(argin)
-            self._obs_command_running_callback(hook="configure", running=False)
-            return result
-        else:
-            return (
-                ResultCode.REJECTED,
-                f"Configure not allowed in component state {self.component_state}",
-            )
+        try:
+            return self._configure(argin)
+        except Exception as ex:
+            return ResultCode.FAILED, f"Configure command failed. ex={ex!r}"
 
     def deconfigure(self: FhsLowLevelComponentManagerBase, argin: dict = None) -> tuple[ResultCode, str]:
-        self.logger.debug(f"Component state: {self.component_state}")
-        if self.is_deconfigure_allowed():
-            self._obs_command_running_callback(hook="deconfigure", running=True)
-            result = self._configure(argin, True)
-            self._obs_command_running_callback(hook="deconfigure", running=False)
-            return result
-        else:
-            return (
-                ResultCode.REJECTED,
-                f"Deconfigure not allowed in component state {self.component_state}",
-            )
+        try:
+            return self._configure(argin, True)
+        except Exception as ex:
+            return ResultCode.FAILED, f"Deconfigure command failed. ex={ex!r}"
+
 
     def start(self: FhsLowLevelComponentManagerBase, task_callback: Optional[Callable] = None) -> tuple[TaskStatus, str]:
         self.logger.debug(f"Component state: {self.communication_state}")
         return self.submit_task(
-            func=functools.partial(
-                self._obs_command_with_callback,
-                hook="start",
-                command_thread=self._start,
-            ),
-            is_cmd_allowed=self.is_start_allowed,
+            func=self._start,
             task_callback=task_callback,
         )
 
@@ -158,12 +87,7 @@ class FhsLowLevelComponentManagerBase(FhsComponentManagerBase):
     ) -> tuple[TaskStatus, str]:
         self.logger.debug(f"Component state: {self.communication_state}")
         return self.submit_task(
-            func=functools.partial(
-                self._obs_command_with_callback,
-                hook="stop",
-                command_thread=self._stop,
-            ),
-            is_cmd_allowed=self.is_stop_allowed,
+            func=self._stop,
             task_callback=task_callback,
         )
 
